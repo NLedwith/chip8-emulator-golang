@@ -7,7 +7,7 @@ import (
 	"github.com/go-gl/gl/v4.1-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"io/ioutil"
-	//"strconv"
+	"strconv"
 )
 
 type Chip8Emulator struct {
@@ -44,6 +44,39 @@ func (emu *Chip8Emulator) start(program []uint8) {
 		instruction := (uint16(emu.RAM[emu.PC]) << 8) | uint16(emu.RAM[emu.PC+1])
 		emu.execute_instruction(instruction)
 		emu.draw_screen()
+		/*
+		fmt.Println("V0: " + strconv.FormatInt(int64(emu.V0), 10))
+		fmt.Println("V1: " + strconv.FormatInt(int64(emu.V1), 10))
+		fmt.Println("V2: " + strconv.FormatInt(int64(emu.V2), 10))
+		fmt.Println("V3: " + strconv.FormatInt(int64(emu.V3), 10))
+		fmt.Println("V4: " + strconv.FormatInt(int64(emu.V4), 10))
+		fmt.Println("V5: " + strconv.FormatInt(int64(emu.V5), 10))
+		fmt.Println("V6: " + strconv.FormatInt(int64(emu.V6), 10))
+		fmt.Println("V7: " + strconv.FormatInt(int64(emu.V7), 10))
+		fmt.Println("V8: " + strconv.FormatInt(int64(emu.V8), 10))
+		fmt.Println("V9: " + strconv.FormatInt(int64(emu.V9), 10))
+		fmt.Println("VA: " + strconv.FormatInt(int64(emu.VA), 10))
+		fmt.Println("VB: " + strconv.FormatInt(int64(emu.VB), 10))
+		fmt.Println("VC: " + strconv.FormatInt(int64(emu.VC), 10))
+		fmt.Println("VD: " + strconv.FormatInt(int64(emu.VD), 10))
+		fmt.Println("VE: " + strconv.FormatInt(int64(emu.VE), 10))
+		fmt.Println("VF: " + strconv.FormatInt(int64(emu.VF), 10))
+		fmt.Println("I: " + strconv.FormatInt(int64(emu.I), 10))
+		fmt.Println("ST: " + strconv.FormatInt(int64(emu.ST), 10))
+		fmt.Println("DT: " + strconv.FormatInt(int64(emu.DT), 10))
+		fmt.Println("PC: " + strconv.FormatInt(int64(emu.PC), 10))
+		fmt.Println("SP: " + strconv.FormatInt(int64(emu.SP), 10))
+		var w1 string
+		_, err := fmt.Scanln(&w1)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if w1 == "draw" {
+			emu.draw_screen()
+		}
+		*/
+		
+		
 	}
 }
 
@@ -64,7 +97,7 @@ func (emu *Chip8Emulator) execute_instruction(instruction uint16) {
 	case 1:
 		emu.run_1(instruction)
 	case 2:
-		log.Fatal(fmt.Sprintf("%x", op) + " NOT IMPLEMENTED")
+		emu.run_2(instruction)
 	case 3:
 		emu.run_3(instruction)
 	case 4:
@@ -90,7 +123,7 @@ func (emu *Chip8Emulator) execute_instruction(instruction uint16) {
 	case 14:
 		log.Fatal(fmt.Sprintf("%x", op) + " NOT IMPLEMENTED")
 	case 15:
-		log.Fatal(fmt.Sprintf("%x", op) + " NOT IMPLEMENTED")
+		emu.run_F(instruction)
 		
 	default:
 		log.Fatal(fmt.Sprintf("%x", op) + " NOT RECOGNIZED")
@@ -123,6 +156,13 @@ func (emu *Chip8Emulator) run_1(instruction uint16) {
 	fmt.Println(emu.PC)
 	fmt.Println(fmt.Sprintf("%x", instruction) + ": " + "JP " + fmt.Sprintf("%x", (instruction & 4095)))
 	emu.PC = instruction & 4095
+}
+
+func (emu *Chip8Emulator) run_2(instruction uint16) {
+	fmt.Println(fmt.Sprintf("%x", instruction) + ": " + "CALL " + fmt.Sprintf("%x", instruction & 4095))
+	emu.SP--
+	emu.Stack[emu.SP] = emu.PC
+	emu.PC = (instruction & 4095)
 }
 
 func (emu *Chip8Emulator) run_3(instruction uint16) {
@@ -413,7 +453,7 @@ func (emu *Chip8Emulator) run_7(instruction uint16) {
 	case 15:
 		emu.VF += uint8(instruction & 255)
 	default:
-		log.Fatal(fmt.Sprintf("%x", ((instruction & 3040) >> 8)) + " REGISTER NOT RECOGNIZED")
+		log.Fatal(fmt.Sprintf("%x", ((instruction & 3840) >> 8)) + " REGISTER NOT RECOGNIZED")
 		
 	}
 	emu.PC += 2
@@ -427,39 +467,146 @@ func (emu *Chip8Emulator) run_A(instruction uint16) {
 
 func (emu *Chip8Emulator) run_D(instruction uint16) {
 	fmt.Println(fmt.Sprintf("%x", instruction) + ": " + "DRW V" + fmt.Sprintf("%x", ((instruction & 3840) >> 8)) + ", V" + fmt.Sprintf("%x", ((instruction & 240) >> 4)) + ", " + fmt.Sprintf("%x", instruction & 15))
-	x := int(((instruction & 3840) >> 8))
-	y := int(((instruction & 240) >> 4))
+	x := *emu.get_register(int(((instruction & 3840) >> 8)))
+	y := *emu.get_register(int(((instruction & 240) >> 4)))
+
 	n := int(instruction & 15)
 	i := 0
 	j := emu.I
 	for i < n {
+		fmt.Print(emu.RAM[j])
 		mask := uint8(128)
 		bit_shift := 7
+		cur_x := x
 		for bit_shift != -1 {
 			pixel := ((emu.RAM[j] & mask) >> bit_shift)
-			if pixel == 0 && emu.Display[y][x] == ' ' {
-				emu.Display[y][x] = ' '
-			} else if pixel == 1 && emu.Display[y][x] == ' ' {
-				emu.Display[y][x] = '*'
-			} else if pixel == 0 && emu.Display[y][x] == '*' {
-				emu.Display[y][x] = '*'
+			if pixel == 0 && emu.Display[y][cur_x] == ' ' {
+				emu.Display[y][cur_x] = ' '
+			} else if pixel == 1 && emu.Display[y][cur_x] == ' ' {
+				emu.Display[y][cur_x] = '*'
+			} else if pixel == 0 && emu.Display[y][cur_x] == '*' {
+				emu.Display[y][cur_x] = '*'
 			} else {
-				emu.Display[y][x] = ' '
+				emu.Display[y][cur_x] = ' '
 				emu.VF = 1
 			}
 			mask = mask/2
 			bit_shift--
-			x++
-			if x > 63 {
-				x = 0
+			cur_x++
+			if cur_x > 63 {
+				cur_x = 0
 			}
+		}
+		y++
+		if y > 31 {
+			y = 0
 		}
 		i++
 		j++
 	}
+	fmt.Println()
 	emu.PC += 2
 }
 
+func (emu *Chip8Emulator) run_F(instruction uint16) {
+	fmt.Println(instruction)
+	switch instruction & 255 {
+	case 7:
+		emu.debug(instruction, 0)
+		*emu.get_register(int(((instruction & 3840) >> 8))) = emu.DT
+		emu.debug(instruction, 1)
+	/*
+	case 10:
+		continue
+	*/
+	case 21:
+		emu.debug(instruction, 0)
+		reg := *emu.get_register(int(((instruction & 3840) >> 8)))
+		emu.DT = reg
+		emu.debug(instruction, 1)
+	case 24:
+		emu.debug(instruction, 0)
+		reg := *emu.get_register(int(((instruction & 3840) >> 8)))
+		emu.ST = reg
+		emu.debug(instruction, 1)
+	case 30:
+		fmt.Println(fmt.Sprintf("%x", instruction) + ": " + "ADD I, V" + fmt.Sprintf("%x", (instruction & 3840) >> 8))
+		reg := *emu.get_register(int(((instruction & 3840) >> 8)))
+		emu.I += uint16(reg)
+	/*
+	case 41:
+		continue
+	case 51:
+		continue
+	*/
+	case 85:
+		fmt.Println(fmt.Sprintf("%x", instruction) + ": " + "LD [I], V" + fmt.Sprintf("%x", (instruction & 3840) >> 8))
+		i := uint16(0)
+	        n := ((instruction & 3840) >> 8)
+		buf := emu.I
+		for i <= n {
+			reg := *emu.get_register(int(i))
+			emu.RAM[buf] = reg
+			i++
+		}
+	case 101:
+		fmt.Println(fmt.Sprintf("%x", instruction) + ": " + "LD V" + fmt.Sprintf("%x", (instruction & 3840) >> 8) + ", [I]")
+		i := uint16(0)
+		n := ((instruction & 3840) >> 8)
+		buf := emu.I
+		for i <= n {
+			*emu.get_register(int(i)) = emu.RAM[buf]
+			buf++
+			i++
+		}	
+	default:
+		log.Fatal("NOT IMPLEMENTED")
+	}
+	emu.PC += 2
+	
+}
+
+
+func (emu *Chip8Emulator) get_register(val int) *uint8 {
+	var register *uint8
+	switch val {
+	case 0:
+		register =  &emu.V0
+	case 1:
+		register = &emu.V1
+	case 2:
+		register = &emu.V2
+	case 3:
+		register = &emu.V3
+	case 4:
+		register = &emu.V4
+	case 5:
+		register = &emu.V5
+	case 6:
+		register = &emu.V6
+	case 7:
+		register = &emu.V7
+	case 8:
+		register = &emu.V8
+	case 9:
+		register = &emu.V9
+	case 10:
+		register = &emu.VA
+	case 11:
+		register = &emu.VB
+	case 12:
+		register = &emu.VC
+	case 13:
+		register = &emu.VD
+	case 14:
+		register = &emu.VE
+	case 15:
+		register = &emu.VF
+	default:
+		log.Fatal(fmt.Sprintf("%x", (val)) + " REGISTER NOT RECOGNIZED")
+	}
+	return register
+}
 func (emu *Chip8Emulator) clear_screen() {
 	i := 0
 	for i < len(emu.Display) {
@@ -485,6 +632,35 @@ func (emu *Chip8Emulator) draw_screen() {
 	}
 }
 
+func (emu *Chip8Emulator) debug(instruction uint16, flag int) {
+	fmt.Println("INSTRUCTION: " + fmt.Sprintf("%x", instruction))
+	fmt.Println("V0: " + strconv.FormatInt(int64(emu.V0), 10))
+	fmt.Println("V1: " + strconv.FormatInt(int64(emu.V1), 10))
+	fmt.Println("V2: " + strconv.FormatInt(int64(emu.V2), 10))
+	fmt.Println("V3: " + strconv.FormatInt(int64(emu.V3), 10))
+	fmt.Println("V4: " + strconv.FormatInt(int64(emu.V4), 10))
+	fmt.Println("V5: " + strconv.FormatInt(int64(emu.V5), 10))
+	fmt.Println("V6: " + strconv.FormatInt(int64(emu.V6), 10))
+	fmt.Println("V7: " + strconv.FormatInt(int64(emu.V7), 10))
+	fmt.Println("V8: " + strconv.FormatInt(int64(emu.V8), 10))
+	fmt.Println("V9: " + strconv.FormatInt(int64(emu.V9), 10))
+	fmt.Println("VA: " + strconv.FormatInt(int64(emu.VA), 10))
+	fmt.Println("VB: " + strconv.FormatInt(int64(emu.VB), 10))
+	fmt.Println("VC: " + strconv.FormatInt(int64(emu.VC), 10))
+	fmt.Println("VD: " + strconv.FormatInt(int64(emu.VD), 10))
+	fmt.Println("VE: " + strconv.FormatInt(int64(emu.VE), 10))
+	fmt.Println("VF: " + strconv.FormatInt(int64(emu.VF), 10))
+	fmt.Println("I: " + strconv.FormatInt(int64(emu.I), 10))
+	fmt.Println("ST: " + strconv.FormatInt(int64(emu.ST), 10))
+	fmt.Println("DT: " + strconv.FormatInt(int64(emu.DT), 10))
+	fmt.Println("PC: " + strconv.FormatInt(int64(emu.PC), 10))
+	fmt.Println("SP: " + strconv.FormatInt(int64(emu.SP), 10))
+	fmt.Println("Stack:", emu.Stack)
+	if flag == 1 {
+		log.Fatal()
+	}
+}
+
 
 
 
@@ -503,15 +679,18 @@ func main() {
 		panic(err)
 	}
 
-	emu := Chip8Emulator{PC: 512}
+	
+	emu := Chip8Emulator{PC: 512, SP: 16}
 	emu.start(file)
-
+	
 	/*
+	byteArray := [4096]byte{}
 	pc := 512
 	for (pc-512) < len(file) {
-		RAM[pc] = file[pc-512]
+		byteArray[pc] = file[pc-512]
 		pc++
 	}
+
 	running := true
 	pc = 512
 	for running {
@@ -524,10 +703,9 @@ func main() {
 			panic(err)
 		}
 	}
-	*/
-	/*
-	ic := 512
-	i = 0
+	
+	ic := 0
+	i := 0
 	
 	for i < len(byteArray) {
 		upperByte := fmt.Sprintf("%x", byteArray[i])
