@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"strconv"
+	"github.com/mattn/go-tty"
 )
 
 type Chip8Emulator struct {
@@ -259,7 +260,7 @@ func (emu *Chip8Emulator) run_0(instruction uint16) {
 	case 238:
 		fmt.Println(fmt.Sprintf("%x", instruction) + ": " + "RET")
 		emu.PC = emu.Stack[emu.SP]
-		emu.SP -= 1
+		emu.SP += 1
 	default:
 		fmt.Println(fmt.Sprintf("%x", instruction) + ": " + "SYS " + fmt.Sprintf("%x", instruction&4095))
 		emu.PC = instruction & 4095
@@ -647,10 +648,11 @@ func (emu *Chip8Emulator) run_F(instruction uint16) {
 		emu.debug(instruction, 0)
 		*emu.get_register(int(((instruction & 3840) >> 8))) = emu.DT
 		emu.debug(instruction, 1)
-	/*
-		case 10:
-			continue
-	*/
+	
+	case 10:
+		fmt.Println(fmt.Sprintf("%x", instruction) + ": " + "LD V" + fmt.Sprintf("%x", (instruction&3840)>>8) + ", K")
+		*emu.get_register(int(((instruction & 3840) >> 8))) = get_key_press()
+	
 	case 21:
 		emu.debug(instruction, 0)
 		reg := *emu.get_register(int(((instruction & 3840) >> 8)))
@@ -669,10 +671,17 @@ func (emu *Chip8Emulator) run_F(instruction uint16) {
 		fmt.Println(fmt.Sprintf("%x", instruction) + ": " + "LD F, V" + fmt.Sprintf("%x", (instruction&3840)>>8))
 		reg := *emu.get_register(int(((instruction & 3840) >> 8)))
 		emu.I = uint16(reg) * 5
-	/*
-		case 51:
-			continue
-	*/
+	
+	case 51:
+		fmt.Println(fmt.Sprintf("%x", instruction) + ": " + "LD B, V" + fmt.Sprintf("%x", (instruction&3840)>>8))
+		reg := *emu.get_register(int(((instruction & 3840) >> 8)))
+		i := 2
+		for i >= 0 {
+			emu.RAM[emu.I + uint16(i)] = reg % 10
+			reg = reg / 10
+			i--
+		}
+	
 	case 85:
 		fmt.Println(fmt.Sprintf("%x", instruction) + ": " + "LD [I], V" + fmt.Sprintf("%x", (instruction&3840)>>8))
 		i := uint16(0)
@@ -799,8 +808,58 @@ const (
 	height = 32
 )
 
+func get_key_press() uint8{
+	tty, err := tty.Open()
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer tty.Close()
+
+    for {
+        r, err := tty.ReadRune()
+        if err != nil {
+            log.Fatal(err)
+        }
+		switch r {
+			case 48:
+				return 0
+			case 49:
+				return 1
+			case 50:
+				return 2
+			case 51:
+				return 3
+			case 52:
+				return 4
+			case 53:
+				return 5
+			case 54:
+				return 6
+			case 55:
+				return 7
+			case 56:
+				return 8
+			case 57:
+				return 9
+			case 97:
+				return 10
+			case 98:
+				return 11
+			case 99:
+				return 12
+			case 100:
+				return 13
+			case 101:
+				return 14
+			case 102:
+				return 15
+		}
+    }
+	return 3
+}
+
 func main() {
-	file, err := ioutil.ReadFile("pong.ch8")
+	file, err := ioutil.ReadFile("blitz.ch8")
 	if err != nil {
 		panic(err)
 	}
