@@ -859,8 +859,13 @@ func get_key_press() uint8{
 }
 
 func main() {
-	fileName := string(os.Args[1])
-	file, err := ioutil.ReadFile("./roms/" + fileName + ".ch8")
+	filePath := ""
+	if len(os.Args) > 1 {
+		filePath = "./roms/" + string(os.Args[1]) + ".ch8"
+	} else {
+		filePath = "./roms/blitz.ch8"
+	}
+	file, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		panic(err)
 	}

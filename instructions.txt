@@ -1,0 +1,1 @@
+sudo docker run -ti -u root --entrypoint=/bin/bash emulator-test -s
