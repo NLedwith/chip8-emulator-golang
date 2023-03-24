@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
-
+	"os"
 	//"runtime"
 	"io/ioutil"
 	"math/rand"
@@ -859,8 +859,8 @@ func get_key_press() uint8{
 }
 
 func main() {
-	fmt.Println("Hello")
-	file, err := ioutil.ReadFile("blitz.ch8")
+	fileName := string(os.Args[1])
+	file, err := ioutil.ReadFile("./roms/" + fileName + ".ch8")
 	if err != nil {
 		panic(err)
 	}
